@@ -1,13 +1,13 @@
-package searchengine.services;
+package skillbox.SearchEngine.services;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import searchengine.config.Site;
-import searchengine.config.SitesList;
-import searchengine.dto.statistics.DetailedStatisticsItem;
-import searchengine.dto.statistics.StatisticsData;
-import searchengine.dto.statistics.StatisticsResponse;
-import searchengine.dto.statistics.TotalStatistics;
+import skillbox.SearchEngine.config.Site;
+import skillbox.SearchEngine.config.SitesList;
+import skillbox.SearchEngine.dto.statistics.DetailedStatisticsItem;
+import skillbox.SearchEngine.dto.statistics.StatisticsData;
+import skillbox.SearchEngine.dto.statistics.StatisticsResponse;
+import skillbox.SearchEngine.dto.statistics.TotalStatistics;
 
 import java.util.ArrayList;
 import java.util.List;

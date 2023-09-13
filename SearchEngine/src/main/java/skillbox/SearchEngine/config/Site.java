@@ -1,4 +1,4 @@
-package searchengine.config;
+package skillbox.SearchEngine.config;
 
 import lombok.Getter;
 import lombok.Setter;

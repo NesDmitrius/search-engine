@@ -1,6 +1,6 @@
-package searchengine.services;
+package skillbox.SearchEngine.services;
 
-import searchengine.dto.statistics.StatisticsResponse;
+import skillbox.SearchEngine.dto.statistics.StatisticsResponse;
 
 public interface StatisticsService {
     StatisticsResponse getStatistics();

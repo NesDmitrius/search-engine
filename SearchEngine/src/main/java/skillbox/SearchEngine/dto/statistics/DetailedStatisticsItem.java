@@ -1,4 +1,4 @@
-package searchengine.dto.statistics;
+package skillbox.SearchEngine.dto.statistics;
 
 import lombok.Data;
 
