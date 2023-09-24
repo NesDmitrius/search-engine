@@ -37,7 +37,7 @@ public class IndexingServiceImpl implements IndexingService {
     private ErrorResponse errorResponse;
 
     private static final int COUNT_THREADS = Runtime.getRuntime().availableProcessors() * 2;
-    private final ExecutorService executorService;
+    private ExecutorService executorService;
 
     @Autowired
     public IndexingServiceImpl(SitesList sites, SiteRepository siteRepository, PageRepository pageRepository) {
@@ -47,7 +47,6 @@ public class IndexingServiceImpl implements IndexingService {
         siteList = sites.getSites();
         result = false;
         isIndexing = false;
-        executorService = Executors.newFixedThreadPool(COUNT_THREADS);
     }
 
     public CustomResponse getSuccessfulResponse() {
@@ -58,16 +57,16 @@ public class IndexingServiceImpl implements IndexingService {
 
     @Override
     public CustomResponse getResponseStartIndexing() {
-        if (isIndexing) {
+        if (isIndexing && !executorService.isShutdown()) {
             errorResponse = new ErrorResponse();
             errorResponse.setResult(false);
             errorResponse.setError(ErrorMessage.START_INDEXING_ERROR.getMessage());
             return errorResponse;
         }
-        if (!executorService.isShutdown()) {
-            startIndexing();
-            isIndexing = true;
-        }
+
+        isIndexing = true;
+        executorService = Executors.newFixedThreadPool(COUNT_THREADS);
+        startIndexing();
         return getSuccessfulResponse();
     }
 
@@ -78,29 +77,25 @@ public class IndexingServiceImpl implements IndexingService {
             errorResponse.setError(ErrorMessage.STOP_INDEXING_ERROR.getMessage());
             return errorResponse;
         }
-        if (!executorService.isShutdown()) {
-            stopIndexing();
-        }
+        awaitTerminationAfterShutdown(executorService);
+        stopIndexing();
         return getSuccessfulResponse();
     }
 
     public void startIndexing() {
         for (Site site : siteList) {
-            executorService.execute(() -> {
+            executorService.submit(() -> {
                 deleteDataFromDB(site);
                 SiteEntity siteEntity = new SiteEntity();
                 createNewIndexingSite(site, siteEntity);
                 IndexingSite indexingSite = new IndexingSite(site.getUrl());
                 List<Page> pageList = indexingSite.indexing();
                 createNewPageIndexingSite(pageList, siteEntity);
-                siteEntity.setStatusTime(updateStatusTime());
-                siteEntity.setStatus(Status.INDEXED);
-                siteRepository.save(siteEntity);
+                updateSiteIndexed(siteEntity);
+                awaitTerminationAfterShutdown(executorService);
                 System.out.println("Indexing completed");
-                executorService.shutdown();
             });
         }
-        isIndexing = false;
     }
 
     public synchronized void deleteDataFromDB(Site site) {
@@ -113,7 +108,7 @@ public class IndexingServiceImpl implements IndexingService {
         siteRepository.deleteByUrl(siteUrl);
     }
 
-    public void createNewIndexingSite(Site site, SiteEntity siteEntity) {
+    public synchronized void createNewIndexingSite(Site site, SiteEntity siteEntity) {
         siteEntity.setUrl(site.getUrl());
         siteEntity.setName(site.getName());
         siteEntity.setStatus(Status.INDEXING);
@@ -121,7 +116,7 @@ public class IndexingServiceImpl implements IndexingService {
         siteRepository.save(siteEntity);
     }
 
-    public void createNewPageIndexingSite(List<Page> pageList, SiteEntity siteEntity) {
+    public synchronized void createNewPageIndexingSite(List<Page> pageList, SiteEntity siteEntity) {
         List<PageEntity> pageEntities = new ArrayList<>(pageList.size());
         for (Page page : pageList) {
             PageEntity pageEntity = new PageEntity();
@@ -138,19 +133,13 @@ public class IndexingServiceImpl implements IndexingService {
         return LocalDateTime.now();
     }
 
-    public void stopIndexing() {
-        isIndexing = false;
-        executorService.shutdown();
-        try {
-            if (executorService.awaitTermination(2, TimeUnit.MINUTES)) {
-                System.out.println("Все задания выполнены!");
-            } else {
-                List<Runnable> notExecuted = executorService.shutdownNow();
-                System.out.printf("Так и не запустилось %d заданий.%n", notExecuted.size());
-            }
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+    public synchronized void updateSiteIndexed(SiteEntity siteEntity) {
+        siteEntity.setStatusTime(updateStatusTime());
+        siteEntity.setStatus(Status.INDEXED);
+        siteRepository.save(siteEntity);
+    }
+
+    public synchronized void stopIndexing() {
         List<SiteEntity> listSiteEntity = siteRepository.findAll();
         for (SiteEntity siteEntity : listSiteEntity) {
             if (siteEntity.getStatus().equals(Status.INDEXING)) {
@@ -159,6 +148,19 @@ public class IndexingServiceImpl implements IndexingService {
                 siteEntity.setLastError(ErrorMessage.CANCEL_INDEXING_ERROR.getMessage());
                 siteRepository.save(siteEntity);
             }
+        }
+    }
+
+    public void awaitTerminationAfterShutdown(ExecutorService threadPool) {
+        isIndexing = false;
+        threadPool.shutdown();
+        try {
+            if (!threadPool.awaitTermination(60, TimeUnit.MILLISECONDS)) {
+                threadPool.shutdownNow();
+            }
+        } catch (InterruptedException ex) {
+            threadPool.shutdownNow();
+            Thread.currentThread().interrupt();
         }
     }
 

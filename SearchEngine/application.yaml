@@ -12,7 +12,7 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
       show-sql: true
-spring.jpa.hibernate.ddl-auto: create
+spring.jpa.hibernate.ddl-auto: update
 
 #jsoup-setting:
 #  userAgent: DmitriusSearchBot
@@ -28,8 +28,8 @@ indexing-settings:
 #      name: Skillbox
     - url: https://www.playback.ru
       name: PlayBack.Ru
-    - url: https://bananashow.ru
-      name: BananaShow.Ru
+#    - url: https://bananashow.ru
+#      name: BananaShow.Ru
     - url: https://bulgakovmuseum.ru
       name: Музей М.А. Булгакова
     - url: https://et-cetera.ru/mobile
