@@ -31,11 +31,8 @@ public class IndexingServiceImpl implements IndexingService {
     private final List<Site> siteList;
     private final SiteRepository siteRepository;
     private final PageRepository pageRepository;
-    private boolean result;
     private volatile boolean isIndexing;
-
     private ErrorResponse errorResponse;
-
     private static final int COUNT_THREADS = Runtime.getRuntime().availableProcessors() * 2;
     private ExecutorService executorService;
 
@@ -45,7 +42,6 @@ public class IndexingServiceImpl implements IndexingService {
         this.siteRepository = siteRepository;
         this.pageRepository = pageRepository;
         siteList = sites.getSites();
-        result = false;
         isIndexing = false;
     }
 
@@ -57,13 +53,12 @@ public class IndexingServiceImpl implements IndexingService {
 
     @Override
     public CustomResponse getResponseStartIndexing() {
-        if (isIndexing && !executorService.isShutdown()) {
+        if (isIndexing && !executorService.isTerminated()) {
             errorResponse = new ErrorResponse();
             errorResponse.setResult(false);
             errorResponse.setError(ErrorMessage.START_INDEXING_ERROR.getMessage());
             return errorResponse;
         }
-
         isIndexing = true;
         executorService = Executors.newFixedThreadPool(COUNT_THREADS);
         startIndexing();
@@ -71,7 +66,7 @@ public class IndexingServiceImpl implements IndexingService {
     }
 
     public CustomResponse getResponseStopIndexing() {
-        if (!isIndexing) {
+        if (!isIndexing || executorService.isTerminated()) {
             errorResponse = new ErrorResponse();
             errorResponse.setResult(false);
             errorResponse.setError(ErrorMessage.STOP_INDEXING_ERROR.getMessage());
@@ -102,7 +97,7 @@ public class IndexingServiceImpl implements IndexingService {
         String siteUrl = site.getUrl();
         List<SiteEntity> listSiteEntity = siteRepository.findByUrl(siteUrl);
         if (!listSiteEntity.isEmpty()) {
-            List<PageEntity> pageEntityList = pageRepository.findBySite_UrlLike(site.getUrl());
+            List<PageEntity> pageEntityList = pageRepository.findBySite_UrlLike(siteUrl);
             pageRepository.deleteAll(pageEntityList);
         }
         siteRepository.deleteByUrl(siteUrl);
@@ -140,6 +135,8 @@ public class IndexingServiceImpl implements IndexingService {
     }
 
     public synchronized void stopIndexing() {
+        awaitTerminationAfterShutdown(executorService);
+        isIndexing = false;
         List<SiteEntity> listSiteEntity = siteRepository.findAll();
         for (SiteEntity siteEntity : listSiteEntity) {
             if (siteEntity.getStatus().equals(Status.INDEXING)) {
@@ -152,7 +149,6 @@ public class IndexingServiceImpl implements IndexingService {
     }
 
     public void awaitTerminationAfterShutdown(ExecutorService threadPool) {
-        isIndexing = false;
         threadPool.shutdown();
         try {
             if (!threadPool.awaitTermination(60, TimeUnit.MILLISECONDS)) {
