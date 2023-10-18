@@ -15,14 +15,18 @@ import skillbox.SearchEngine.model.Status;
 import skillbox.SearchEngine.repositories.PageRepository;
 import skillbox.SearchEngine.repositories.SiteRepository;
 import skillbox.SearchEngine.utility.IndexingSite;
+import skillbox.SearchEngine.utility.LemmasFromText;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
 
 @Service
 public class IndexingServiceImpl implements IndexingService {
@@ -31,11 +35,8 @@ public class IndexingServiceImpl implements IndexingService {
     private final List<Site> siteList;
     private final SiteRepository siteRepository;
     private final PageRepository pageRepository;
-    private boolean result;
     private volatile boolean isIndexing;
-
     private ErrorResponse errorResponse;
-
     private static final int COUNT_THREADS = Runtime.getRuntime().availableProcessors() * 2;
     private ExecutorService executorService;
 
@@ -45,7 +46,6 @@ public class IndexingServiceImpl implements IndexingService {
         this.siteRepository = siteRepository;
         this.pageRepository = pageRepository;
         siteList = sites.getSites();
-        result = false;
         isIndexing = false;
     }
 
@@ -57,13 +57,12 @@ public class IndexingServiceImpl implements IndexingService {
 
     @Override
     public CustomResponse getResponseStartIndexing() {
-        if (isIndexing && !executorService.isShutdown()) {
+        if (isIndexing && !executorService.isTerminated()) {
             errorResponse = new ErrorResponse();
             errorResponse.setResult(false);
             errorResponse.setError(ErrorMessage.START_INDEXING_ERROR.getMessage());
             return errorResponse;
         }
-
         isIndexing = true;
         executorService = Executors.newFixedThreadPool(COUNT_THREADS);
         startIndexing();
@@ -71,7 +70,7 @@ public class IndexingServiceImpl implements IndexingService {
     }
 
     public CustomResponse getResponseStopIndexing() {
-        if (!isIndexing) {
+        if (!isIndexing || executorService.isTerminated()) {
             errorResponse = new ErrorResponse();
             errorResponse.setResult(false);
             errorResponse.setError(ErrorMessage.STOP_INDEXING_ERROR.getMessage());
@@ -79,6 +78,17 @@ public class IndexingServiceImpl implements IndexingService {
         }
         awaitTerminationAfterShutdown(executorService);
         stopIndexing();
+        return getSuccessfulResponse();
+    }
+
+    public CustomResponse getResponseIndexPage(String url) {
+        if (url.isEmpty() || url.isBlank() || !urlHasSiteList(url)) {
+            errorResponse = new ErrorResponse();
+            errorResponse.setResult(false);
+            errorResponse.setError(ErrorMessage.INDEX_PAGE_ERROR.getMessage());
+            return errorResponse;
+        }
+        getLemmasFromPage(url);
         return getSuccessfulResponse();
     }
 
@@ -102,7 +112,7 @@ public class IndexingServiceImpl implements IndexingService {
         String siteUrl = site.getUrl();
         List<SiteEntity> listSiteEntity = siteRepository.findByUrl(siteUrl);
         if (!listSiteEntity.isEmpty()) {
-            List<PageEntity> pageEntityList = pageRepository.findBySite_UrlLike(site.getUrl());
+            List<PageEntity> pageEntityList = pageRepository.findBySite_UrlLike(siteUrl);
             pageRepository.deleteAll(pageEntityList);
         }
         siteRepository.deleteByUrl(siteUrl);
@@ -140,6 +150,8 @@ public class IndexingServiceImpl implements IndexingService {
     }
 
     public synchronized void stopIndexing() {
+        awaitTerminationAfterShutdown(executorService);
+        isIndexing = false;
         List<SiteEntity> listSiteEntity = siteRepository.findAll();
         for (SiteEntity siteEntity : listSiteEntity) {
             if (siteEntity.getStatus().equals(Status.INDEXING)) {
@@ -152,7 +164,6 @@ public class IndexingServiceImpl implements IndexingService {
     }
 
     public void awaitTerminationAfterShutdown(ExecutorService threadPool) {
-        isIndexing = false;
         threadPool.shutdown();
         try {
             if (!threadPool.awaitTermination(60, TimeUnit.MILLISECONDS)) {
@@ -163,5 +174,31 @@ public class IndexingServiceImpl implements IndexingService {
             Thread.currentThread().interrupt();
         }
     }
+
+    public boolean urlHasSiteList(String url) {
+        for (Site site : siteList) {
+            if (site.getUrl().contains(url.strip())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public void getLemmasFromPage(String url) {
+        try {
+            Logger.getLogger(IndexingServiceImpl.class.getSimpleName()).info(url);
+            LemmasFromText lemmasFromText = new LemmasFromText();
+            String textWithoutHtml = lemmasFromText.textFromPage(url);
+            Map<String, Integer> lemmasTextHtml = lemmasFromText.getLemmasFromText(textWithoutHtml);
+            for (Map.Entry<String, Integer> entry : lemmasTextHtml.entrySet()) {
+                System.out.println(entry.getKey() + " - " + entry.getValue());
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+
 
 }

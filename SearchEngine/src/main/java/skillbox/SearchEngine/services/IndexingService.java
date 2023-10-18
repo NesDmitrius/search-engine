@@ -7,4 +7,6 @@ public interface IndexingService {
 
     CustomResponse getResponseStartIndexing();
     CustomResponse getResponseStopIndexing();
+    CustomResponse getResponseIndexPage(String url);
+
 }

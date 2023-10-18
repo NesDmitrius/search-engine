@@ -39,4 +39,8 @@ public class SiteEntity {
     @OneToMany(mappedBy = "site", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<PageEntity> pages = new ArrayList<>();
 
+    @OneToMany(mappedBy = "site", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<LemmaEntity> lemmas = new ArrayList<>();
+
+
 }

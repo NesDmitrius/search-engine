@@ -1,9 +1,7 @@
 package skillbox.SearchEngine.controllers;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import skillbox.SearchEngine.dto.CustomResponse;
 import skillbox.SearchEngine.dto.statistics.StatisticsResponse;
 import skillbox.SearchEngine.services.IndexingService;
@@ -35,4 +33,10 @@ public class ApiController {
     public ResponseEntity<CustomResponse> stopIndexing() {
         return ResponseEntity.ok(indexingService.getResponseStopIndexing());
     }
+
+    @PostMapping("/indexPage")
+    public ResponseEntity<CustomResponse> indexPage(@RequestParam String url) {
+        return ResponseEntity.ok(indexingService.getResponseIndexPage(url));
+    }
+
 }

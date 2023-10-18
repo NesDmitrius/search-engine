@@ -75,6 +75,7 @@ public class ParserLinks extends RecursiveTask<String> {
 
             }
         }
+        allSetLinks.clear();
     }
 
     private boolean isCheckedUrl(String url) {
