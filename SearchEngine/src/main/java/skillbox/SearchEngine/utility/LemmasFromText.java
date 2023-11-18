@@ -2,7 +2,6 @@ package skillbox.SearchEngine.utility;
 
 import org.apache.lucene.morphology.LuceneMorphology;
 import org.apache.lucene.morphology.russian.RussianLuceneMorphology;
-import org.jsoup.Jsoup;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -51,14 +50,5 @@ public class LemmasFromText {
         }
         return false;
     }
-
-    public String cleanTextHtml(String textWithHtml) {
-        return Jsoup.parse(textWithHtml).text();
-    }
-
-    public String textFromPage(String url) throws IOException {
-        return Jsoup.connect(url).ignoreHttpErrors(true).get().text();
-    }
-
 
 }

@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 import skillbox.SearchEngine.model.PageEntity;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface PageRepository extends JpaRepository<PageEntity, Integer> {
@@ -15,5 +16,7 @@ public interface PageRepository extends JpaRepository<PageEntity, Integer> {
     @Transactional
     void deleteBySite_IdLike(Integer id);
     List<PageEntity> findBySite_UrlLike(String siteUrl);
+
+    Optional<PageEntity> findByPathAndSiteId(String pagePath, Integer siteId);
 
 }

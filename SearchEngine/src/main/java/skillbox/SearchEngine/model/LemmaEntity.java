@@ -29,7 +29,7 @@ public class LemmaEntity {
     @Column(nullable = false)
     private int frequency;
 
-    @OneToMany(mappedBy = "lemma", cascade = CascadeType.MERGE, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "lemma", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<IndexEntity> indexes = new ArrayList<>();
 
 }
