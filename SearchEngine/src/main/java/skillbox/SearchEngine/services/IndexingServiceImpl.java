@@ -113,12 +113,19 @@ public class IndexingServiceImpl implements IndexingService {
 
     public synchronized void deleteDataFromDB(Site site) {
         String siteUrl = site.getUrl();
-        List<SiteEntity> listSiteEntity = siteRepository.findByUrl(siteUrl);
-        if (!listSiteEntity.isEmpty()) {
+        Optional<SiteEntity> optionalSiteEntity = siteRepository.findByUrl(siteUrl);
+        if (optionalSiteEntity.isPresent()) {
+            SiteEntity siteEntity = optionalSiteEntity.get();
             List<PageEntity> pageEntityList = pageRepository.findBySite_UrlLike(siteUrl);
+            List<IndexEntity> indexToDelete = new ArrayList<>();
+            pageEntityList.forEach(pageEntity ->
+                indexToDelete.addAll(indexRepository.findIndexEntitiesByPageId(pageEntity.getId())));
+            List<LemmaEntity> lemmasToDelete = lemmaRepository.findLemmaEntitiesBySiteId(siteEntity.getId());
+            indexRepository.deleteAll(indexToDelete);
+            lemmaRepository.deleteAll(lemmasToDelete);
             pageRepository.deleteAll(pageEntityList);
+            siteRepository.deleteById(siteEntity.getId());
         }
-        siteRepository.deleteByUrl(siteUrl);
     }
 
     public synchronized void createNewIndexingSite(Site site, SiteEntity siteEntity) {
@@ -131,6 +138,7 @@ public class IndexingServiceImpl implements IndexingService {
 
     public synchronized void createNewPageIndexingSite(List<Page> pageList, SiteEntity siteEntity) {
         List<PageEntity> pageEntities = new ArrayList<>(pageList.size());
+        ParserSinglePage parserSinglePage = new ParserSinglePage();
         for (Page page : pageList) {
             PageEntity pageEntity = new PageEntity();
             pageEntity.setPath(page.getPath());
@@ -140,6 +148,14 @@ public class IndexingServiceImpl implements IndexingService {
             pageEntities.add(pageEntity);
         }
         pageRepository.saveAll(pageEntities);
+
+        pageEntities.forEach(pageEntity -> {
+            String textPage = parserSinglePage.getTextPageFromContent(pageEntity.getContent());
+            if (pageEntity.getCode() < 400) {
+                System.out.println("число символов на странице: " + textPage.length());
+                createLemmaAndIndexFromPage(textPage, pageEntity, siteEntity);
+            }
+        });
     }
 
     public LocalDateTime updateStatusTime() {
@@ -202,18 +218,18 @@ public class IndexingServiceImpl implements IndexingService {
         String siteUrl;
         Site siteSinglePage = new Site();
         SiteEntity siteEntity = new SiteEntity();
-        List<SiteEntity> listSiteEntity = new ArrayList<>();
+        Optional<SiteEntity> optionalSiteEntity = Optional.empty();
         for (Site site : siteList) {
             siteUrl = site.getUrl();
             if (url.strip().startsWith(siteUrl)) {
-                listSiteEntity = siteRepository.findByUrl(siteUrl);
+                optionalSiteEntity = siteRepository.findByUrl(siteUrl);
                 siteSinglePage = site;
             }
         }
-        if (listSiteEntity.isEmpty()) {
+        if (optionalSiteEntity.isEmpty()) {
             createSiteForSinglePage(siteSinglePage, siteEntity);
         } else {
-            siteEntity = listSiteEntity.get(0);
+            siteEntity = optionalSiteEntity.get();
         }
         ParserSinglePage parserSinglePage = new ParserSinglePage();
         try {
@@ -224,12 +240,14 @@ public class IndexingServiceImpl implements IndexingService {
         Page page = parserSinglePage.getPage();
         String textPage = parserSinglePage.getTextPage();
         String pathPage = page.getPath();
-        indexRepository.deleteAll();
-        lemmaRepository.deleteAll();
-        pageRepository.deleteAll();
+//        indexRepository.deleteAll();
+//        lemmaRepository.deleteAll();
+//        pageRepository.deleteAll();
         deleteInfoSinglePage(pathPage, siteEntity);
         PageEntity pageEntity = createSinglePage(page, siteEntity);
-        createLemmaAndIndexFromPage(textPage, pageEntity, siteEntity);
+        if (page.getCode() < 400) {
+            createLemmaAndIndexFromPage(textPage, pageEntity, siteEntity);
+        }
     }
 
     public void deleteInfoSinglePage(String pathPage, SiteEntity siteEntity) {
@@ -240,9 +258,7 @@ public class IndexingServiceImpl implements IndexingService {
             List<LemmaEntity> lemmasToDelete = new ArrayList<>();
             List<LemmaEntity> lemmasFromDB = lemmaRepository.findLemmaEntitiesBySiteId(siteEntity.getId());
             if (!lemmasFromDB.isEmpty()) {
-                System.out.println(lemmasFromDB.size());
                 lemmasFromDB = getLemmasForPage(lemmasFromDB, indexToDelete);
-                System.out.println(lemmasFromDB.size());
                 List<LemmaEntity> lemmasForUpgrade = new ArrayList<>();
                 for (LemmaEntity lemmaEntity : lemmasFromDB) {
                     if (lemmaEntity.getFrequency() == 1) {
@@ -252,8 +268,8 @@ public class IndexingServiceImpl implements IndexingService {
                     lemmasForUpgrade.add(updateLemmaEntityForDelete(lemmaEntity));
                 }
                 indexRepository.deleteAll(indexToDelete);
-                lemmaRepository.saveAll(lemmasForUpgrade);
                 lemmaRepository.deleteAll(lemmasToDelete);
+                lemmaRepository.saveAll(lemmasForUpgrade);
             }
             pageRepository.delete(pageEntity);
         }
@@ -288,14 +304,16 @@ public class IndexingServiceImpl implements IndexingService {
     }
 
     public void createLemmaAndIndexFromPage(String textPage, PageEntity pageEntity, SiteEntity siteEntity) {
-        List<LemmaEntity> listLemmaEntity = lemmaRepository.findLemmaEntitiesBySiteId(siteEntity.getId());
-        Map<String, Integer> lemmasMap = getLemmasFromPage(textPage);
-        Set<String> lemmasSet = lemmasMap.keySet();
+        List<LemmaEntity> listLemmaEntityFromDB = lemmaRepository.findLemmaEntitiesBySiteId(siteEntity.getId());
+        System.out.println("listLemmaEntityFromDB: " + listLemmaEntityFromDB.size());
+        Map<String, Integer> lemmasMap = new HashMap<>(getLemmasFromPage(textPage));
+        System.out.println("lemmasMap: " + lemmasMap.size());
+        Set<String> lemmasSet = new HashSet<>(lemmasMap.keySet());
         List<LemmaEntity> lemmaEntities = new ArrayList<>(lemmasSet.size());
-        if (listLemmaEntity.isEmpty()) {
-            lemmaEntities = createNewLemmas(lemmasSet, siteEntity);
+        if (listLemmaEntityFromDB.isEmpty()) {
+            lemmaEntities.addAll(createNewLemmas(lemmasSet, siteEntity));
         } else {
-            for (LemmaEntity lemmaEntity : listLemmaEntity) {
+            for (LemmaEntity lemmaEntity : listLemmaEntityFromDB) {
                 String lemma = lemmaEntity.getLemma();
                 if (lemmasSet.contains(lemma)) {
                     lemmaEntities.add(updateLemmaEntity(lemmaEntity));
@@ -305,14 +323,12 @@ public class IndexingServiceImpl implements IndexingService {
             lemmaEntities.addAll(createNewLemmas(lemmasSet, siteEntity));
         }
         lemmaRepository.saveAll(lemmaEntities);
-        listLemmaEntity.clear();
-        listLemmaEntity = lemmaRepository.findLemmaEntitiesBySiteId(siteEntity.getId());
-//        listLemmaEntity.forEach(lemmaEntity -> {
-//            System.out.println(lemmaEntity.getLemma() + " " + lemmaEntity.getId() + " " + lemmaEntity.getFrequency());
-//            System.out.println(lemmaEntity.getIndexes().size());
-//        });
-        List<IndexEntity> indexEntities = createNewIndexes(pageEntity, listLemmaEntity, lemmasMap);
+        lemmaRepository.flush();
+        //System.out.println("lemmaEntities: " + lemmaEntities.size());
+        List<IndexEntity> indexEntities = createNewIndexes(pageEntity, lemmaEntities, lemmasMap);
         indexRepository.saveAll(indexEntities);
+        indexRepository.flush();
+        //lemmaEntities.clear();
     }
 
     public List<LemmaEntity> createNewLemmas(Set<String> lemmasSet, SiteEntity siteEntity) {
@@ -347,25 +363,16 @@ public class IndexingServiceImpl implements IndexingService {
                                               Map<String, Integer> lemmasMap) {
 
         List<IndexEntity> indexEntities = new ArrayList<>(lemmaEntities.size());
-
-        System.out.println(lemmasMap.size());
-        System.out.println();
-        System.out.println(lemmaEntities.size());
-
         for (LemmaEntity lemmaEntity : lemmaEntities) {
             String lemma = lemmaEntity.getLemma();
-            if (lemmasMap.containsKey(lemma)) {
-                float rank = lemmasMap.get(lemma).floatValue();
-                IndexEntity indexEntity = new IndexEntity();
-                indexEntity.setPage(pageEntity);
-                indexEntity.setLemma(lemmaEntity);
-                indexEntity.setRank(rank);
-                indexEntities.add(indexEntity);
-            }
+            float rank = lemmasMap.get(lemma).floatValue();
+            IndexEntity indexEntity = new IndexEntity();
+            indexEntity.setPage(pageEntity);
+            indexEntity.setLemma(lemmaEntity);
+            indexEntity.setRank(rank);
+            indexEntities.add(indexEntity);
         }
-
         System.out.println("Indexes " + indexEntities.size());
-
         return indexEntities;
     }
 

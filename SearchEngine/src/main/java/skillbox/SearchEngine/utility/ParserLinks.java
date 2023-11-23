@@ -72,16 +72,15 @@ public class ParserLinks extends RecursiveTask<String> {
                 pageList.add(new Page(path, statusCodePage, content));
 
                 System.out.println(path + " " + statusCodePage);
-
+                getLinks(link);
             }
         }
-        allSetLinks.clear();
     }
 
     private boolean isCheckedUrl(String url) {
         return (!url.isEmpty() && url.startsWith(site.concat("/"))
-                && !allSetLinks.contains(url) && !url.contains("#")
-                && !url.matches("([^\\s]+(\\.(?i)(jpg|png|gif|bmp|pdf))$)"));
+                && !allSetLinks.contains(url) && !url.contains("#") && !url.contains("?")
+                && !url.matches("([^\\s]+(\\.(?i)(jpg|jpeg|png|gif|bmp|pdf|doc|docx|xls|xlsx))$)"));
     }
 
     private int getStatusCodePage(String url) {
@@ -99,6 +98,7 @@ public class ParserLinks extends RecursiveTask<String> {
     }
 
     public List<Page> getPageList() {
+        allSetLinks.clear();
         return pageList;
     }
 }

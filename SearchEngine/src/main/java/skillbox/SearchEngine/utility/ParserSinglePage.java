@@ -40,4 +40,8 @@ public class ParserSinglePage {
     public String getTextPage() {
         return textPage;
     }
+
+    public String getTextPageFromContent(String content) {
+        return Jsoup.parse(content).text();
+    }
 }

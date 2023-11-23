@@ -30,7 +30,7 @@ indexing-settings:
       name: PlayBack.Ru
 #    - url: https://bananashow.ru
 #      name: BananaShow.Ru
-    - url: https://bulgakovmuseum.ru
-      name: Музей М.А. Булгакова
+#    - url: https://bulgakovmuseum.ru
+#      name: Музей М.А. Булгакова
     - url: https://et-cetera.ru/mobile
       name: ET CETERA

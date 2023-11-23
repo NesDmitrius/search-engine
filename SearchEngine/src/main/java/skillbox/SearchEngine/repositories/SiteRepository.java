@@ -9,12 +9,13 @@ import org.springframework.stereotype.Repository;
 import skillbox.SearchEngine.model.SiteEntity;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface SiteRepository extends JpaRepository<SiteEntity, Integer> {
 
     @Query("SELECT s FROM SiteEntity s WHERE s.url = :url")
-    List<SiteEntity> findByUrl (@Param("url") String url);
+    Optional<SiteEntity> findByUrl (@Param("url") String url);
 
     @Modifying
     @Transactional
