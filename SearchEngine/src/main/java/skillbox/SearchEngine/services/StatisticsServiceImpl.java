@@ -1,57 +1,44 @@
 package skillbox.SearchEngine.services;
 
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import skillbox.SearchEngine.config.Site;
-import skillbox.SearchEngine.config.SitesList;
 import skillbox.SearchEngine.dto.statistics.DetailedStatisticsItem;
 import skillbox.SearchEngine.dto.statistics.StatisticsData;
 import skillbox.SearchEngine.dto.statistics.StatisticsResponse;
 import skillbox.SearchEngine.dto.statistics.TotalStatistics;
+import skillbox.SearchEngine.model.SiteEntity;
+import skillbox.SearchEngine.repositories.LemmaRepository;
+import skillbox.SearchEngine.repositories.PageRepository;
+import skillbox.SearchEngine.repositories.SiteRepository;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 
 @Service
-@RequiredArgsConstructor
 public class StatisticsServiceImpl implements StatisticsService {
 
-    private final Random random = new Random();
-    private final SitesList sites;
+    private final SiteRepository siteRepository;
+    private final PageRepository pageRepository;
+    private final LemmaRepository lemmaRepository;
+
+    @Autowired
+    public StatisticsServiceImpl(SiteRepository siteRepository, PageRepository pageRepository,
+                                 LemmaRepository lemmaRepository) {
+        this.siteRepository = siteRepository;
+        this.pageRepository = pageRepository;
+        this.lemmaRepository = lemmaRepository;
+    }
 
     @Override
     public StatisticsResponse getStatistics() {
-        String[] statuses = { "INDEXED", "FAILED", "INDEXING" };
-        String[] errors = {
-                "Ошибка индексации: главная страница сайта не доступна",
-                "Ошибка индексации: сайт не доступен",
-                ""
-        };
+
+        List<SiteEntity> siteEntities = siteRepository.findAll();
 
         TotalStatistics total = new TotalStatistics();
-        total.setSites(sites.getSites().size());
+        total.setSites(siteEntities.size());
         total.setIndexing(true);
 
-        List<DetailedStatisticsItem> detailed = new ArrayList<>();
-        List<Site> sitesList = sites.getSites();
-        for(int i = 0; i < sitesList.size(); i++) {
-            Site site = sitesList.get(i);
-            DetailedStatisticsItem item = new DetailedStatisticsItem();
-            item.setName(site.getName());
-            item.setUrl(site.getUrl());
-            int pages = random.nextInt(1_000);
-            int lemmas = pages * random.nextInt(1_000);
-            item.setPages(pages);
-            item.setLemmas(lemmas);
-            item.setStatus(statuses[i % 3]);
-            item.setError(errors[i % 3]);
-            item.setStatusTime(System.currentTimeMillis() -
-                    (random.nextInt(10_000)));
-            total.setPages(total.getPages() + pages);
-            total.setLemmas(total.getLemmas() + lemmas);
-            detailed.add(item);
-        }
+        List<DetailedStatisticsItem> detailed = getDetailedStatisticsItem(siteEntities, total);
 
         StatisticsResponse response = new StatisticsResponse();
         StatisticsData data = new StatisticsData();
@@ -60,5 +47,31 @@ public class StatisticsServiceImpl implements StatisticsService {
         response.setStatistics(data);
         response.setResult(true);
         return response;
+    }
+
+    private List<DetailedStatisticsItem> getDetailedStatisticsItem (List<SiteEntity> siteEntities,
+                                                                    TotalStatistics total) {
+        String error = "";
+        List<DetailedStatisticsItem> detailed = new ArrayList<>();
+        for (SiteEntity siteEntity : siteEntities) {
+            if (siteEntity.getLastError() != null) {
+                error = siteEntity.getLastError();
+            }
+            int siteId = siteEntity.getId();
+            DetailedStatisticsItem item = new DetailedStatisticsItem();
+            item.setName(siteEntity.getName());
+            item.setUrl(siteEntity.getUrl());
+            int pages = pageRepository.countPageEntitiesBySiteId(siteId);
+            int lemmas = lemmaRepository.countLemmaEntitiesBySiteId(siteId);
+            item.setPages(pages);
+            item.setLemmas(lemmas);
+            item.setStatus(siteEntity.getStatus().toString());
+            item.setError(error);
+            item.setStatusTime(siteEntity.getStatusTime());
+            total.setPages(total.getPages() + pages);
+            total.setLemmas(total.getLemmas() + lemmas);
+            detailed.add(item);
+        }
+        return detailed;
     }
 }

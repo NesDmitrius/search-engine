@@ -22,15 +22,9 @@ spring.jpa.hibernate.ddl-auto: update
 
 indexing-settings:
   sites:
-#    - url: https://www.lenta.ru
-#      name: Лента.ру
-#    - url: https://www.skillbox.ru
-#      name: Skillbox
     - url: https://www.playback.ru
       name: PlayBack.Ru
-#    - url: https://bananashow.ru
-#      name: BananaShow.Ru
-#    - url: https://bulgakovmuseum.ru
-#      name: Музей М.А. Булгакова
+    - url: https://bulgakovmuseum.ru
+      name: Музей М.А. Булгакова
     - url: https://et-cetera.ru/mobile
       name: ET CETERA

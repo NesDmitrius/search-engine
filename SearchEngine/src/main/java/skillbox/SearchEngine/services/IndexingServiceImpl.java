@@ -124,7 +124,7 @@ public class IndexingServiceImpl implements IndexingService {
             indexRepository.deleteAll(indexToDelete);
             lemmaRepository.deleteAll(lemmasToDelete);
             pageRepository.deleteAll(pageEntityList);
-            siteRepository.deleteById(siteEntity.getId());
+            siteRepository.deleteByUrl(siteEntity.getUrl());
         }
     }
 
@@ -152,7 +152,6 @@ public class IndexingServiceImpl implements IndexingService {
         pageEntities.forEach(pageEntity -> {
             String textPage = parserSinglePage.getTextPageFromContent(pageEntity.getContent());
             if (pageEntity.getCode() < 400) {
-                System.out.println("число символов на странице: " + textPage.length());
                 createLemmaAndIndexFromPage(textPage, pageEntity, siteEntity);
             }
         });
@@ -305,9 +304,7 @@ public class IndexingServiceImpl implements IndexingService {
 
     public void createLemmaAndIndexFromPage(String textPage, PageEntity pageEntity, SiteEntity siteEntity) {
         List<LemmaEntity> listLemmaEntityFromDB = lemmaRepository.findLemmaEntitiesBySiteId(siteEntity.getId());
-        System.out.println("listLemmaEntityFromDB: " + listLemmaEntityFromDB.size());
         Map<String, Integer> lemmasMap = new HashMap<>(getLemmasFromPage(textPage));
-        System.out.println("lemmasMap: " + lemmasMap.size());
         Set<String> lemmasSet = new HashSet<>(lemmasMap.keySet());
         List<LemmaEntity> lemmaEntities = new ArrayList<>(lemmasSet.size());
         if (listLemmaEntityFromDB.isEmpty()) {
@@ -323,12 +320,8 @@ public class IndexingServiceImpl implements IndexingService {
             lemmaEntities.addAll(createNewLemmas(lemmasSet, siteEntity));
         }
         lemmaRepository.saveAll(lemmaEntities);
-        lemmaRepository.flush();
-        //System.out.println("lemmaEntities: " + lemmaEntities.size());
         List<IndexEntity> indexEntities = createNewIndexes(pageEntity, lemmaEntities, lemmasMap);
         indexRepository.saveAll(indexEntities);
-        indexRepository.flush();
-        //lemmaEntities.clear();
     }
 
     public List<LemmaEntity> createNewLemmas(Set<String> lemmasSet, SiteEntity siteEntity) {
@@ -372,7 +365,6 @@ public class IndexingServiceImpl implements IndexingService {
             indexEntity.setRank(rank);
             indexEntities.add(indexEntity);
         }
-        System.out.println("Indexes " + indexEntities.size());
         return indexEntities;
     }
 

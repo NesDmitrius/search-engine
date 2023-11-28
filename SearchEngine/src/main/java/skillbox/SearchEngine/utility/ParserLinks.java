@@ -70,8 +70,6 @@ public class ParserLinks extends RecursiveTask<String> {
                 statusCodePage = getStatusCodePage(link);
                 String content = page.html();
                 pageList.add(new Page(path, statusCodePage, content));
-
-                System.out.println(path + " " + statusCodePage);
                 getLinks(link);
             }
         }
@@ -80,7 +78,7 @@ public class ParserLinks extends RecursiveTask<String> {
     private boolean isCheckedUrl(String url) {
         return (!url.isEmpty() && url.startsWith(site.concat("/"))
                 && !allSetLinks.contains(url) && !url.contains("#") && !url.contains("?")
-                && !url.matches("([^\\s]+(\\.(?i)(jpg|jpeg|png|gif|bmp|pdf|doc|docx|xls|xlsx))$)"));
+                && !url.matches("([^\\s]+(\\.(?i)(jpg|jpeg|png|gif|bmp|pdf|doc|docx|xls|xlsx|mp3))$)"));
     }
 
     private int getStatusCodePage(String url) {

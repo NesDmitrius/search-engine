@@ -19,4 +19,6 @@ public interface PageRepository extends JpaRepository<PageEntity, Integer> {
 
     Optional<PageEntity> findByPathAndSiteId(String pagePath, Integer siteId);
 
+    int countPageEntitiesBySiteId(int siteId);
+
 }
