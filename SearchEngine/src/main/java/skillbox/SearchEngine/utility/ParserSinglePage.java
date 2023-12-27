@@ -44,4 +44,8 @@ public class ParserSinglePage {
     public String getTextPageFromContent(String content) {
         return Jsoup.parse(content).text();
     }
+
+    public String getTitlePageFromContent(String content) {
+        return Jsoup.parse(content).title();
+    }
 }

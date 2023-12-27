@@ -17,6 +17,12 @@ public interface SiteRepository extends JpaRepository<SiteEntity, Integer> {
     @Query("SELECT s FROM SiteEntity s WHERE s.url = :url")
     Optional<SiteEntity> findByUrl (@Param("url") String url);
 
+    @Query("SELECT s FROM SiteEntity s WHERE s.url = :url AND s.status = 'INDEXED'")
+    Optional<SiteEntity> findByUrlAndStatus (@Param("url") String url);
+
+    @Query("SELECT s FROM SiteEntity s WHERE s.status = 'INDEXED'")
+    List<SiteEntity> findAllByStatus();
+
     @Modifying
     @Transactional
     void deleteByUrl(String url);
