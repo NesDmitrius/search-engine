@@ -106,7 +106,7 @@ public class IndexingServiceImpl implements IndexingService {
                 createNewPageIndexingSite(pageList, siteEntity);
                 updateSiteIndexed(siteEntity);
                 awaitTerminationAfterShutdown(executorService);
-                System.out.println("Indexing completed");
+                System.out.println("Indexing site" + site.getUrl() + "completed");
             });
         }
     }
@@ -239,9 +239,6 @@ public class IndexingServiceImpl implements IndexingService {
         Page page = parserSinglePage.getPage();
         String textPage = parserSinglePage.getTextPage();
         String pathPage = page.getPath();
-//        indexRepository.deleteAll();
-//        lemmaRepository.deleteAll();
-//        pageRepository.deleteAll();
         deleteInfoSinglePage(pathPage, siteEntity);
         PageEntity pageEntity = createSinglePage(page, siteEntity);
         if (page.getCode() < 400) {

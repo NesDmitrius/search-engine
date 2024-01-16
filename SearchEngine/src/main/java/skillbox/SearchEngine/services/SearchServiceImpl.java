@@ -169,8 +169,6 @@ public class SearchServiceImpl implements SearchService {
         if (lemmaEntities.size() == 1) {
             return pageEntities;
         }
-
-        System.out.println("Первый размер списка: " + pageEntities.size());
         lemmaEntities = lemmaEntities.stream().skip(1).collect(Collectors.toList());
         for (LemmaEntity lemmaEntity : lemmaEntities) {
             indexEntities = indexRepository.findIndexEntitiesByLemmaId(lemmaEntity.getId());
@@ -178,10 +176,7 @@ public class SearchServiceImpl implements SearchService {
                     .map(indexEntity -> indexEntity.getPage().getId()).collect(Collectors.toSet());
             pageEntities = pageEntities.stream()
                     .filter(pageEntity -> idPages.contains(pageEntity.getId())).collect(Collectors.toList());
-            System.out.println("Промежуточный размер списка: " + pageEntities.size());
         }
-        System.out.println("Последний размер списка: " + pageEntities.size());
-
         return pageEntities;
     }
 
@@ -217,7 +212,12 @@ public class SearchServiceImpl implements SearchService {
         Pattern pattern;
         Matcher matcher;
         for (String word : lemmasQuerySet) {
-            String basisWord = word.substring(0, word.length() - 1);
+            String basisWord;
+            if (word.length() == 3) {
+                basisWord = word;
+            } else {
+                basisWord = word.substring(0, word.length() - 1);
+            }
             pattern = Pattern.compile(basisWord);
             matcher = pattern.matcher(textPage.toLowerCase());
             while (matcher.find()) {
@@ -226,8 +226,7 @@ public class SearchServiceImpl implements SearchService {
                 wordsQueryFromContent.add(textPage.substring(start, end).strip());
             }
         }
-        System.out.println("Список найденных слов из запроса");
-        wordsQueryFromContent.forEach(System.out::println);
+
         List<String> sentencesFromContent = getSentencesFromContent(textPage);
         sentencesFromContent.forEach(sentence ->
                 snippet.append(getSentenceWithWordQuery(sentence, wordsQueryFromContent)));

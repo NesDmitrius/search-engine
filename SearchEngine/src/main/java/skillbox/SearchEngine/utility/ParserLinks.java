@@ -78,7 +78,7 @@ public class ParserLinks extends RecursiveTask<String> {
     private boolean isCheckedUrl(String url) {
         return (!url.isEmpty() && url.startsWith(site.concat("/"))
                 && !allSetLinks.contains(url) && !url.contains("#") && !url.contains("?")
-                && !url.matches("([^\\s]+(\\.(?i)(jpg|jpeg|png|gif|bmp|pdf|doc|docx|xls|xlsx|mp3))$)"));
+                && !url.matches("([^\\s]+(\\.(?i)(jpg|jpeg|png|gif|bmp|pdf|doc|docx|xls|xlsx|mp3|zip))$)"));
     }
 
     private int getStatusCodePage(String url) {

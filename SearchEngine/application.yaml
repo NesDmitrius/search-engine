@@ -7,13 +7,6 @@ spring:
     username: root
     password: root
     driver-class-name: com.mysql.cj.jdbc.Driver
-    hikari:
-      connection-timeout: 20000
-      minimum-idle: 5
-      maximum-pool-size: 10
-      idle-timeout: 10000
-      max-lifetime: 1000
-      auto-commit: true
   jpa:
     properties:
       hibernate:
@@ -29,9 +22,13 @@ spring.jpa.hibernate.ddl-auto: update
 
 indexing-settings:
   sites:
-    - url: https://www.playback.ru
-      name: PlayBack.Ru
-    - url: https://bulgakovmuseum.ru
-      name: Музей М.А. Булгакова
-    - url: https://et-cetera.ru/mobile
-      name: ET CETERA
+    - url: https://shm.ru
+      name: Исторический музей
+    - url: https://www.svetlovka.ru
+      name: СВЕТЛОВКА
+    - url: https://snaplistings.com
+      name: Snap listings
+    - url: https://www.bluespark.digital
+      name: Bluespark Digital LLC
+    - url: https://edriver.by
+      name: eDiver.by
