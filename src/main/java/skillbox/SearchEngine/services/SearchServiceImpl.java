@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 @Service
 public class SearchServiceImpl implements SearchService {
 
-    private static final int OPTIMAL_FREQUENCY_PERCENT = 20;
+    private static final int OPTIMAL_FREQUENCY_PERCENT = 80;
     private final SiteRepository siteRepository;
     private final PageRepository pageRepository;
     private final LemmaRepository lemmaRepository;
