@@ -253,11 +253,14 @@ public class SearchServiceImpl implements SearchService {
 
     private String getSentenceWithWordQuery(String sentence, Set<String> wordsQueryFromContent) {
         String result = "";
+        String wordsQuery = "";
         List<String> wordsSentence = Arrays.stream(sentence.split("\\s+")).toList();
         for (String word : wordsSentence) {
-            if (wordsQueryFromContent.contains(word)) {
-                result = sentence.replace(word, " <b>".concat(word).concat("</b> "));
+            if (!wordsQueryFromContent.contains(word)) {
+                continue;
             }
+            wordsQuery = wordsQuery.concat(" <b>").concat(word).concat("</b> ");
+            result = sentence.replace(word, wordsQuery);
         }
         return result;
     }
