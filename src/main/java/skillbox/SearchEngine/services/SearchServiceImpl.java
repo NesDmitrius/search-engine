@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 @Service
 public class SearchServiceImpl implements SearchService {
 
-    private static final int OPTIMAL_FREQUENCY_PERCENT = 80;
+    private static final int OPTIMAL_FREQUENCY_PERCENT = 20;
     private final SiteRepository siteRepository;
     private final PageRepository pageRepository;
     private final LemmaRepository lemmaRepository;
@@ -43,7 +43,7 @@ public class SearchServiceImpl implements SearchService {
     }
 
     @Override
-    public CustomResponse getSearch(String query) {
+    public CustomResponse getSearch(String query, int offset, int limit) {
         if (query.isBlank()) {
             return getErrorResponse();
         }
@@ -63,12 +63,12 @@ public class SearchServiceImpl implements SearchService {
         SearchResponse searchResponse = new SearchResponse();
         searchResponse.setResult(true);
         searchResponse.setCount(data.size());
-        searchResponse.setData(getSortListSearchData(data));
+        searchResponse.setData(getSortListSearchData(data).stream().skip(offset).limit(limit).toList());
         return searchResponse;
     }
 
     @Override
-    public CustomResponse getSearchFromSite(String query, String site) {
+    public CustomResponse getSearchFromSite(String query, String site, int offset, int limit) {
         if (query.isBlank()) {
             return getErrorResponse();
         }
@@ -86,7 +86,7 @@ public class SearchServiceImpl implements SearchService {
         SearchResponse searchResponse = new SearchResponse();
         searchResponse.setResult(true);
         searchResponse.setCount(data.size());
-        searchResponse.setData(getSortListSearchData(data));
+        searchResponse.setData(getSortListSearchData(data).stream().skip(offset).limit(limit).toList());
         return searchResponse;
     }
 
@@ -166,9 +166,12 @@ public class SearchServiceImpl implements SearchService {
         List<IndexEntity> indexEntities = indexRepository.findIndexEntitiesByLemmaId(lemmaEntities.get(0).getId());
         pageEntities = pageRepository.findAllById(indexEntities.stream().map(indexEntity ->
                 indexEntity.getPage().getId()).collect(Collectors.toList()));
+        System.out.println("Поиск первого слова - " + pageEntities.size());
         if (lemmaEntities.size() == 1) {
+            System.out.println("Поиск одного слова - " + pageEntities.size());
             return pageEntities;
         }
+        System.out.println("Первый поиск - " + pageEntities.size());
         lemmaEntities = lemmaEntities.stream().skip(1).collect(Collectors.toList());
         for (LemmaEntity lemmaEntity : lemmaEntities) {
             indexEntities = indexRepository.findIndexEntitiesByLemmaId(lemmaEntity.getId());
@@ -176,7 +179,9 @@ public class SearchServiceImpl implements SearchService {
                     .map(indexEntity -> indexEntity.getPage().getId()).collect(Collectors.toSet());
             pageEntities = pageEntities.stream()
                     .filter(pageEntity -> idPages.contains(pageEntity.getId())).collect(Collectors.toList());
+            System.out.println("Последующий поиск - " + pageEntities.size());
         }
+        System.out.println("Итоговый поиск - " + pageEntities.size());
         return pageEntities;
     }
 
@@ -213,7 +218,7 @@ public class SearchServiceImpl implements SearchService {
         Matcher matcher;
         for (String word : lemmasQuerySet) {
             String basisWord;
-            if (word.length() == 3) {
+            if (word.length() <= 3) {
                 basisWord = word;
             } else {
                 basisWord = word.substring(0, word.length() - 1);
@@ -253,14 +258,14 @@ public class SearchServiceImpl implements SearchService {
 
     private String getSentenceWithWordQuery(String sentence, Set<String> wordsQueryFromContent) {
         String result = "";
-        String wordsQuery = "";
         List<String> wordsSentence = Arrays.stream(sentence.split("\\s+")).toList();
         for (String word : wordsSentence) {
             if (!wordsQueryFromContent.contains(word)) {
                 continue;
             }
-            wordsQuery = wordsQuery.concat(" <b>").concat(word).concat("</b> ");
-            result = sentence.replace(word, wordsQuery);
+            String wordsQuery = " <b>".concat(word).concat("</b> ");
+            result = sentence.replaceAll(word, wordsQuery);
+            sentence = result;
         }
         return result;
     }

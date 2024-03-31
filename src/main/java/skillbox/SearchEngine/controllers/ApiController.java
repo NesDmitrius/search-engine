@@ -46,8 +46,11 @@ public class ApiController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<CustomResponse> search(@RequestParam String query, @RequestParam Optional<String> site) {
-        return site.map(s -> ResponseEntity.ok(searchService.getSearchFromSite(query, s)))
-                .orElseGet(() -> ResponseEntity.ok(searchService.getSearch(query)));
+    public ResponseEntity<CustomResponse> search(@RequestParam String query,
+                                                 @RequestParam Optional<String> site,
+                                                 @RequestParam(name = "offset") int offset,
+                                                 @RequestParam(name = "limit") int limit) {
+        return site.map(s -> ResponseEntity.ok(searchService.getSearchFromSite(query, s, offset, limit)))
+                .orElseGet(() -> ResponseEntity.ok(searchService.getSearch(query, offset, limit)));
     }
 }
