@@ -55,7 +55,7 @@ public class SearchServiceImpl implements SearchService {
 
         List<SearchData>  data = new ArrayList<>();
         for (SiteEntity siteEntity : siteEntities) {
-            List<LemmaEntity> lemmaEntities = getRareSortedLemmasFromSite(getLemmasQuery(query), siteEntity);
+            List<LemmaEntity> lemmaEntities = getRareSortedLemmasFromSite(getLemmasText(query), siteEntity);
             List<PageEntity> pageEntities = getPageByLemmas(lemmaEntities);
             data.addAll(getSearchDataList(query, siteEntity, pageEntities, lemmaEntities));
         }
@@ -78,7 +78,7 @@ public class SearchServiceImpl implements SearchService {
             return getNotIndexedErrorResponse();
         }
         SiteEntity siteEntity = optionalSiteEntity.get();
-        List<LemmaEntity> lemmaEntities = getRareSortedLemmasFromSite(getLemmasQuery(query), siteEntity);
+        List<LemmaEntity> lemmaEntities = getRareSortedLemmasFromSite(getLemmasText(query), siteEntity);
         List<PageEntity> pageEntities = getPageByLemmas(lemmaEntities);
 
         List<SearchData> data = getSearchDataList(query, siteEntity, pageEntities, lemmaEntities);
@@ -134,11 +134,11 @@ public class SearchServiceImpl implements SearchService {
                 .collect(Collectors.toList());
     }
 
-    private Set<String> getLemmasQuery(String query) {
+    private Set<String> getLemmasText(String text) {
         Map<String, Integer> lemmasMap = new HashMap<>();
-        LemmasFromText lemmasFromText = new LemmasFromText();
         try {
-            lemmasMap = lemmasFromText.getLemmasFromText(query);
+            LemmasFromText lemmasFromText = new LemmasFromText();
+            lemmasMap = lemmasFromText.getLemmasFromText(text);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -198,39 +198,80 @@ public class SearchServiceImpl implements SearchService {
         return relevanceAbs;
     }
 
-    private Map<String, Integer> getLemmasFromQuery(String textQuery) {
-        Map<String, Integer> lemmasMap = new HashMap<>();
+    private String getNormalFormWord(String word) {
+        //String normalFormWord = "";
         try {
             LemmasFromText lemmasFromText = new LemmasFromText();
-            lemmasMap = lemmasFromText.getLemmasFromText(textQuery);
+            String normalFormWord = lemmasFromText.getNormalForm(word);
+            System.out.println("Нормальная форма: " + normalFormWord);
+            return normalFormWord;
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return lemmasMap;
+        return "";
     }
 
     private String getSnippet(String query, String textPage) {
         StringBuilder snippet = new StringBuilder();
-        Map<String, Integer> lemmasQueryMap = getLemmasFromQuery(query);
-        Set<String> lemmasQuerySet = lemmasQueryMap.keySet();
+
+        String[] wordsTextPage = textPage.split("\\s+");
+        //List<String> wordsTextPage = Arrays.stream(textPage.split("\\s+")).toList();
+        Set<String> lemmasQuerySet = getLemmasText(query);
         Set<String> wordsQueryFromContent = new HashSet<>();
+
         Pattern pattern;
         Matcher matcher;
-        for (String word : lemmasQuerySet) {
-            String basisWord;
-            if (word.length() <= 3) {
-                basisWord = word;
+        String basisWord = "";
+
+        for (int i = 0; i <= wordsTextPage.length; i++) {
+            if (wordsTextPage[i].length() >= 3) {
+                //basisWord = wordsTextPage[i];
+                basisWord = getNormalFormWord(wordsTextPage[i]);
             } else {
-                basisWord = word.substring(0, word.length() - 1);
+
             }
-            pattern = Pattern.compile(basisWord);
-            matcher = pattern.matcher(textPage.toLowerCase());
-            while (matcher.find()) {
-                int start = matcher.start();
-                int end = textPage.indexOf(" ", start);
-                wordsQueryFromContent.add(textPage.substring(start, end).strip());
+            if (lemmasQuerySet.contains(basisWord)) {
+                pattern = Pattern.compile(wordsTextPage[i]);
+                matcher = pattern.matcher(textPage);
+                while (matcher.find()) {
+                    int start = matcher.start();
+                    int end = textPage.indexOf(" ", start);
+                    wordsQueryFromContent.add(textPage.substring(start, end).strip());
+                }
             }
         }
+
+//        for (String word : lemmasQuerySet) {
+//            String basisWord = getNormalFormWord(word);
+//            pattern = Pattern.compile(basisWord);
+//            matcher = pattern.matcher(textPage.toLowerCase());
+//            while (matcher.find()) {
+//                int start = matcher.start();
+//                int end = textPage.indexOf(" ", start);
+//                wordsQueryFromContent.add(textPage.substring(start, end).strip());
+//            }
+//        }
+
+//        lemmasTextPage.stream().filter(lemmasQuerySet::contains)
+//                .forEach(System.out::println);
+//        Pattern pattern;
+//        Matcher matcher;
+//        //String[] wordsTextList = textPage.split("\\s+");
+//        for (String word : lemmasQuerySet) {
+//            String basisWord;
+//            if (word.length() <= 3) {
+//                basisWord = word;
+//            } else {
+//                basisWord = word.substring(0, word.length() - 1);
+//            }
+//            pattern = Pattern.compile(basisWord);
+//            matcher = pattern.matcher(textPage.toLowerCase());
+//            while (matcher.find()) {
+//                int start = matcher.start();
+//                int end = textPage.indexOf(" ", start);
+//                wordsQueryFromContent.add(textPage.substring(start, end).strip());
+//            }
+//        }
 
         List<String> sentencesFromContent = getSentencesFromContent(textPage);
         sentencesFromContent.forEach(sentence ->

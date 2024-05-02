@@ -37,5 +37,10 @@ public class TestLemmatizator {
         for (Map.Entry<String, Integer> entry : lemmas.entrySet()) {
             System.out.println(entry.getKey() + " - " + entry.getValue());
         }
+        System.out.println("Normal forms:");
+        String[] wordsText = text.split("\\s+");
+        for (String word : wordsText) {
+            System.out.println(lemmasFromText.getNormalForm(word));
+        }
     }
 }

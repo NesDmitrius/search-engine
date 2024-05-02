@@ -15,6 +15,13 @@ public class LemmasFromText {
     private final static String REGEX_ENG = "[^A-Za-z]+";
     private final static String[] FUNC_PARTS_OF_SPEECH = new String[]{"МЕЖД", "ПРЕДЛ", "СОЮЗ", "МС", "ВВОДН", "ЧАСТ",
             "CONJ", "PART", "PN_ADJ", "ARTICLE", "PREP", "PN"};
+    private final LuceneMorphology russianLuceneMorphology;
+    private final LuceneMorphology englishLuceneMorphology;
+
+    public LemmasFromText() throws IOException {
+        russianLuceneMorphology = new RussianLuceneMorphology();
+        englishLuceneMorphology = new EnglishLuceneMorphology();
+    }
 
     public Map<String, Integer> getLemmasFromText(String text) throws IOException {
         Map<String, Integer> lemmas = new HashMap<>();
@@ -42,8 +49,7 @@ public class LemmasFromText {
         return false;
     }
 
-    private Map<String, Integer> getRusLemmas(String[] words) throws IOException {
-        LuceneMorphology russianLuceneMorphology = new RussianLuceneMorphology();
+    private Map<String, Integer> getRusLemmas(String[] words) {
         Map<String, Integer> rusLemmas = new HashMap<>();
         for (String word : words) {
             if (word.isBlank() || word.length() < 3) {
@@ -63,8 +69,7 @@ public class LemmasFromText {
         return rusLemmas;
     }
 
-    private Map<String, Integer> getEngLemmas(String[] words) throws IOException {
-        LuceneMorphology englishLuceneMorphology = new EnglishLuceneMorphology();
+    private Map<String, Integer> getEngLemmas(String[] words)  {
         Map<String, Integer> engLemmas = new HashMap<>();
         for (String word : words) {
             if (word.isBlank() || word.length() < 3) {
@@ -82,6 +87,21 @@ public class LemmasFromText {
             engLemmas.merge(normalWord, 1, Integer::sum);
         }
         return engLemmas;
+    }
+
+    public String getNormalForm(String word) {
+        List<String> wordBaseForm;
+        String [] russianWords = word.split(REGEX_RUS);
+        String [] englishWords = word.split(REGEX_ENG);
+        if (russianWords.length != 0) {
+            wordBaseForm = russianLuceneMorphology.getNormalForms(russianWords[0].toLowerCase());
+            return wordBaseForm.get(0);
+        }
+        if (englishWords.length != 0) {
+            wordBaseForm = englishLuceneMorphology.getNormalForms(englishWords[0].toLowerCase());
+            return wordBaseForm.get(0);
+        }
+        return word;
     }
 
 }
