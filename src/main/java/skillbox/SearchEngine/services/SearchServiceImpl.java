@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 @Service
 public class SearchServiceImpl implements SearchService {
 
-    private static final int OPTIMAL_FREQUENCY_PERCENT = 20;
+    private static final int OPTIMAL_FREQUENCY_PERCENT = 60;
     private final SiteRepository siteRepository;
     private final PageRepository pageRepository;
     private final LemmaRepository lemmaRepository;
@@ -199,7 +199,6 @@ public class SearchServiceImpl implements SearchService {
     }
 
     private String getNormalFormWord(String word) {
-        //String normalFormWord = "";
         try {
             LemmasFromText lemmasFromText = new LemmasFromText();
             String normalFormWord = lemmasFromText.getNormalForm(word);
@@ -214,64 +213,28 @@ public class SearchServiceImpl implements SearchService {
     private String getSnippet(String query, String textPage) {
         StringBuilder snippet = new StringBuilder();
 
-        String[] wordsTextPage = textPage.split("\\s+");
-        //List<String> wordsTextPage = Arrays.stream(textPage.split("\\s+")).toList();
+//        String[] wordsTextPage = textPage.split("\\s+");
         Set<String> lemmasQuerySet = getLemmasText(query);
         Set<String> wordsQueryFromContent = new HashSet<>();
 
         Pattern pattern;
         Matcher matcher;
-        String basisWord = "";
-
-        for (int i = 0; i <= wordsTextPage.length; i++) {
-            if (wordsTextPage[i].length() >= 3) {
-                //basisWord = wordsTextPage[i];
-                basisWord = getNormalFormWord(wordsTextPage[i]);
+        for (String word : lemmasQuerySet) {
+            String basisWord;
+            if (word.length() <= 3) {
+                basisWord = getNormalFormWord(word);
             } else {
-
+                basisWord = getNormalFormWord(word);
+                basisWord = basisWord.substring(0, basisWord.length() - 1);
             }
-            if (lemmasQuerySet.contains(basisWord)) {
-                pattern = Pattern.compile(wordsTextPage[i]);
-                matcher = pattern.matcher(textPage);
-                while (matcher.find()) {
-                    int start = matcher.start();
-                    int end = textPage.indexOf(" ", start);
-                    wordsQueryFromContent.add(textPage.substring(start, end).strip());
-                }
+            pattern = Pattern.compile(basisWord);
+            matcher = pattern.matcher(textPage.toLowerCase());
+            while (matcher.find()) {
+                int start = matcher.start();
+                int end = textPage.indexOf(" ", start);
+                wordsQueryFromContent.add(textPage.substring(start, end).strip());
             }
         }
-
-//        for (String word : lemmasQuerySet) {
-//            String basisWord = getNormalFormWord(word);
-//            pattern = Pattern.compile(basisWord);
-//            matcher = pattern.matcher(textPage.toLowerCase());
-//            while (matcher.find()) {
-//                int start = matcher.start();
-//                int end = textPage.indexOf(" ", start);
-//                wordsQueryFromContent.add(textPage.substring(start, end).strip());
-//            }
-//        }
-
-//        lemmasTextPage.stream().filter(lemmasQuerySet::contains)
-//                .forEach(System.out::println);
-//        Pattern pattern;
-//        Matcher matcher;
-//        //String[] wordsTextList = textPage.split("\\s+");
-//        for (String word : lemmasQuerySet) {
-//            String basisWord;
-//            if (word.length() <= 3) {
-//                basisWord = word;
-//            } else {
-//                basisWord = word.substring(0, word.length() - 1);
-//            }
-//            pattern = Pattern.compile(basisWord);
-//            matcher = pattern.matcher(textPage.toLowerCase());
-//            while (matcher.find()) {
-//                int start = matcher.start();
-//                int end = textPage.indexOf(" ", start);
-//                wordsQueryFromContent.add(textPage.substring(start, end).strip());
-//            }
-//        }
 
         List<String> sentencesFromContent = getSentencesFromContent(textPage);
         sentencesFromContent.forEach(sentence ->
@@ -286,7 +249,7 @@ public class SearchServiceImpl implements SearchService {
 
     private List<String> getSentencesFromContent(String textPage) {
         List<String> sentencesFromContent = new ArrayList<>();
-        String regexSentence = "[A-ZА-Я][^.!?]+[.!?]+\\s?";
+        String regexSentence = "[A-ZА-Я][^.!?)]+[.!?]+\\s?";
         Pattern pattern = Pattern.compile(regexSentence);
         Matcher matcher = pattern.matcher(textPage);
         while (matcher.find()) {

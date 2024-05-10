@@ -90,16 +90,28 @@ public class LemmasFromText {
     }
 
     public String getNormalForm(String word) {
-        List<String> wordBaseForm;
+        //List<String> wordBaseForm;
         String [] russianWords = word.split(REGEX_RUS);
         String [] englishWords = word.split(REGEX_ENG);
         if (russianWords.length != 0) {
-            wordBaseForm = russianLuceneMorphology.getNormalForms(russianWords[0].toLowerCase());
-            return wordBaseForm.get(0);
+            if (russianWords[0].length() < 3) {
+                return word;
+            }
+            List<String> wordInfo = russianLuceneMorphology.getMorphInfo(russianWords[0].toLowerCase());
+            if (wordHasPartsOfSpeech(wordInfo)) {
+                return word;
+            }
+            List<String> wordBaseForm = russianLuceneMorphology.getNormalForms(russianWords[0].toLowerCase());
+            if (!wordBaseForm.isEmpty()) {
+                return wordBaseForm.get(0);
+            }
         }
         if (englishWords.length != 0) {
-            wordBaseForm = englishLuceneMorphology.getNormalForms(englishWords[0].toLowerCase());
-            return wordBaseForm.get(0);
+            System.out.println(englishWords[0]);
+            List<String> wordBaseForm = englishLuceneMorphology.getNormalForms(englishWords[0].toLowerCase());
+            if (!wordBaseForm.isEmpty()) {
+                return wordBaseForm.get(0);
+            }
         }
         return word;
     }
