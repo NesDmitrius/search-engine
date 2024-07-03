@@ -27,11 +27,12 @@ import java.util.stream.Collectors;
 @Service
 public class SearchServiceImpl implements SearchService {
 
-    private static final int OPTIMAL_FREQUENCY_PERCENT = 60;
+    private static final int OPTIMAL_FREQUENCY_PERCENT = 95;
     private final SiteRepository siteRepository;
     private final PageRepository pageRepository;
     private final LemmaRepository lemmaRepository;
     private final IndexRepository indexRepository;
+    private LemmasFromText lemmasFromText;
 
     @Autowired
     public SearchServiceImpl(SiteRepository siteRepository, PageRepository pageRepository,
@@ -40,6 +41,11 @@ public class SearchServiceImpl implements SearchService {
         this.pageRepository = pageRepository;
         this.lemmaRepository = lemmaRepository;
         this.indexRepository = indexRepository;
+        try {
+            lemmasFromText = new LemmasFromText();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -137,7 +143,6 @@ public class SearchServiceImpl implements SearchService {
     private Set<String> getLemmasText(String text) {
         Map<String, Integer> lemmasMap = new HashMap<>();
         try {
-            LemmasFromText lemmasFromText = new LemmasFromText();
             lemmasMap = lemmasFromText.getLemmasFromText(text);
         } catch (IOException e) {
             e.printStackTrace();
@@ -166,12 +171,9 @@ public class SearchServiceImpl implements SearchService {
         List<IndexEntity> indexEntities = indexRepository.findIndexEntitiesByLemmaId(lemmaEntities.get(0).getId());
         pageEntities = pageRepository.findAllById(indexEntities.stream().map(indexEntity ->
                 indexEntity.getPage().getId()).collect(Collectors.toList()));
-        System.out.println("Поиск первого слова - " + pageEntities.size());
         if (lemmaEntities.size() == 1) {
-            System.out.println("Поиск одного слова - " + pageEntities.size());
             return pageEntities;
         }
-        System.out.println("Первый поиск - " + pageEntities.size());
         lemmaEntities = lemmaEntities.stream().skip(1).collect(Collectors.toList());
         for (LemmaEntity lemmaEntity : lemmaEntities) {
             indexEntities = indexRepository.findIndexEntitiesByLemmaId(lemmaEntity.getId());
@@ -179,9 +181,7 @@ public class SearchServiceImpl implements SearchService {
                     .map(indexEntity -> indexEntity.getPage().getId()).collect(Collectors.toSet());
             pageEntities = pageEntities.stream()
                     .filter(pageEntity -> idPages.contains(pageEntity.getId())).collect(Collectors.toList());
-            System.out.println("Последующий поиск - " + pageEntities.size());
         }
-        System.out.println("Итоговый поиск - " + pageEntities.size());
         return pageEntities;
     }
 
@@ -199,40 +199,31 @@ public class SearchServiceImpl implements SearchService {
     }
 
     private String getNormalFormWord(String word) {
-        try {
-            LemmasFromText lemmasFromText = new LemmasFromText();
-            String normalFormWord = lemmasFromText.getNormalForm(word);
-            System.out.println("Нормальная форма: " + normalFormWord);
-            return normalFormWord;
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return "";
+        return lemmasFromText.getNormalForm(word);
     }
 
     private String getSnippet(String query, String textPage) {
         StringBuilder snippet = new StringBuilder();
 
-//        String[] wordsTextPage = textPage.split("\\s+");
+        String[] wordsTextPage = textPage.split("\\s+");
+        String cleanWordRegex = "[(),:;]?";
         Set<String> lemmasQuerySet = getLemmasText(query);
         Set<String> wordsQueryFromContent = new HashSet<>();
 
         Pattern pattern;
         Matcher matcher;
-        for (String word : lemmasQuerySet) {
-            String basisWord;
-            if (word.length() <= 3) {
-                basisWord = getNormalFormWord(word);
-            } else {
-                basisWord = getNormalFormWord(word);
-                basisWord = basisWord.substring(0, basisWord.length() - 1);
-            }
-            pattern = Pattern.compile(basisWord);
-            matcher = pattern.matcher(textPage.toLowerCase());
-            while (matcher.find()) {
-                int start = matcher.start();
-                int end = textPage.indexOf(" ", start);
-                wordsQueryFromContent.add(textPage.substring(start, end).strip());
+        String basisWord;
+
+        for (int i = 0; i <= wordsTextPage.length-1; i++) {
+            basisWord = getNormalFormWord(wordsTextPage[i]);
+            if (lemmasQuerySet.contains(basisWord)) {
+                pattern = Pattern.compile(wordsTextPage[i].replaceAll(cleanWordRegex, ""));
+                matcher = pattern.matcher(textPage.toLowerCase());
+                while (matcher.find()) {
+                    int start = matcher.start();
+                    int end = textPage.indexOf(" ", start);
+                    wordsQueryFromContent.add(textPage.substring(start, end).strip());
+                }
             }
         }
 
@@ -249,7 +240,7 @@ public class SearchServiceImpl implements SearchService {
 
     private List<String> getSentencesFromContent(String textPage) {
         List<String> sentencesFromContent = new ArrayList<>();
-        String regexSentence = "[A-ZА-Я][^.!?)]+[.!?]+\\s?";
+        String regexSentence = "[A-ZА-Я][^).!?]+[.!?]+\\s?";
         Pattern pattern = Pattern.compile(regexSentence);
         Matcher matcher = pattern.matcher(textPage);
         while (matcher.find()) {
