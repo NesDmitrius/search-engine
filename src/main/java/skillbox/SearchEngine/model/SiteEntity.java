@@ -21,7 +21,7 @@ public class SiteEntity {
     private Integer id;
 
     @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "ENUM", nullable = false)
+    @Column(columnDefinition = "ENUM('INDEXING', 'INDEXED', 'FAILED')", nullable = false)
     private Status status;
 
     @Column(columnDefinition = "DATETIME" , nullable = false)
